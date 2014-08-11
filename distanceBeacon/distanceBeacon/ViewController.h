@@ -10,6 +10,22 @@
 #import <QuartzCore/QuartzCore.h>
 #import <CoreLocation/CoreLocation.h>
 
-@interface ViewController : UIViewController
+@interface ViewController : UIViewController<CLLocationManagerDelegate>
+{
+    
+    CGFloat red;
+    CGFloat green;
+    CGFloat blue;
+    CGFloat opacity;
+    
+}
+
+
+@property (weak, nonatomic) IBOutlet UIImageView *tempDrawImage;
+
+@property (strong, nonatomic) CLLocationManager *locationManager;
+@property (strong, nonatomic) CLBeaconRegion *beaconRegion;
+@property (strong, nonatomic) NSMutableDictionary *beaconsData;
+
 
 @end
