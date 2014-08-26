@@ -30,14 +30,13 @@
     self.beaconsData = [[NSMutableDictionary alloc] init];
     
     
-    /* si vous souhaitez choisir l'ordre d'apparition des beacons, c'est ici
+    // si vous souhaitez choisir l'ordre d'apparition des beacons, c'est ici
     NSDictionary *beacon1 = @{@"nb": @0};
     [self.beaconsData setObject:beacon1 forKey:@"46889_31899"];
     NSDictionary *beacon2 = @{@"nb": @1};
     [self.beaconsData setObject:beacon2 forKey:@"38656_21561"];
     NSDictionary *beacon3 = @{@"nb": @2};
     [self.beaconsData setObject:beacon3 forKey:@"26323_32358"];
-    */
     
     
     //on instancie corelocation pour faire du range de beacons
@@ -54,7 +53,7 @@
     
     //on demarre la region beacon
     //Pensez à changer le UUID avec celui des beacons que vous avez
-    NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:@"00112211-0328-1982-ABCD-987654321098"];
+    NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:@"00112233-0328-1982-ABCD-987654321098"];
     self.beaconRegion = [[CLBeaconRegion alloc] initWithProximityUUID:uuid identifier:@"fr.muzen"];
     [self.locationManager startMonitoringForRegion:self.beaconRegion];
     
@@ -112,7 +111,7 @@
         float radius = beacon.accuracy *50;
         
         // un peu de trigo pour calculer le rectangle qui contient le cercle qu'on souhaite afficher
-        CGRect borderRect = CGRectMake(160.0f-radius, (100.0f + num*150)-radius, 2*radius,2*radius);
+        CGRect borderRect = CGRectMake(160.0f-radius, (100.0f + num*100)-radius, 2*radius,2*radius);
         
         //on colorise le fond et le bord
         CGContextSetRGBStrokeColor(ctx, 1.0, 1.0, 1.0, 1.0);

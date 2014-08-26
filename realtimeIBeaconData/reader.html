@@ -1,0 +1,28 @@
+<html>
+<head>
+</head>
+<body>
+<ul id="magasins">
+</ul>
+
+</body>
+<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.1/jquery.js"></script>
+<script src="https://cdn.firebase.com/js/client/1.0.21/firebase.js"></script>
+<script type="text/javascript">
+var myFirebaseRef = new Firebase("https://demobeacon.firebaseio.com/beaconsReading/");
+
+myFirebaseRef.on("child_added", function(snapshot) {
+  //nouveau magasin détecté
+  var magasinMajor = snapshot.name();
+  $('#magasins').append('<li id="mag_'+magasinMajor+'">'+magasinMajor+'<ul class="clients"></ul></li>');
+  //nouveau client détecté
+  myFirebaseRef.child(magasinMajor).on("child_added", function(snapshot) {
+  	console.log('client '+magasinMajor);
+  	console.log(snapshot.name());
+  	$('#magasins #mag_'+magasinMajor+' .clients').append('<li>Client '+snapshot.name()+'</li>');
+  	
+  });
+});
+
+</script>
+</html>
