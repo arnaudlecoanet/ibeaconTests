@@ -11,13 +11,15 @@
 
 @interface ViewController : UIViewController<CLLocationManagerDelegate>
 
-
+//sur l'écran
 @property (weak, nonatomic) IBOutlet UIImageView *drawingView;
-@property (weak, nonatomic) NSNumber *step;
 @property (weak, nonatomic) IBOutlet UILabel *actionLabel;
+
+//pour stocker les données des beacons
 @property (strong,nonatomic) NSMutableArray *beaconsData;
+@property (weak, nonatomic) NSNumber *step;
 
-
+//la localisation
 @property (strong, nonatomic) CLLocationManager *locationManager;
 @property (strong, nonatomic) CLBeaconRegion *beaconRegion;
 

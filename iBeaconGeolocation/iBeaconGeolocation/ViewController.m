@@ -20,6 +20,9 @@
 	
     
     self.beaconsData = [[NSMutableArray alloc] init];
+    
+    //Si vous voulez jouez avec d'autres formes que le triangle rectangle, c'est ici qu'il faut changer
+    //j ai pris un triangle rectangle de 3m de côté
     NSDictionary *beacon1 = @{
                                 @"key": @"",
                                 @"point":[NSValue valueWithCGPoint:CGPointMake(10.f,500.f)],
@@ -31,7 +34,7 @@
     
     NSDictionary *beacon2 = @{
                                 @"key": @"",
-                                @"point":[NSValue valueWithCGPoint:CGPointMake(10.f,350.f)],
+                                @"point":[NSValue valueWithCGPoint:CGPointMake(85.f,350.f)],
                                 @"color":[UIColor colorWithRed:0.2 green:0.7 blue:0.6 alpha:1.0],
                                 @"num":@1
                             };
@@ -71,24 +74,12 @@
     [self.locationManager startMonitoringForRegion:self.beaconRegion];
     
     //et on surveille
-    [self locationManager:self.locationManager didStartMonitoringForRegion:self.beaconRegion];
-    
-    
-    
-}
-
-
-
-//on ajoute dans le location manager comme quoi on est intéressé par les beacons
-- (void)locationManager:(CLLocationManager *)manager didStartMonitoringForRegion:(CLRegion *)region {
     [self.locationManager startRangingBeaconsInRegion:self.beaconRegion];
+    
+    
+    
 }
 
-//dès qu'on est prévenu que le beacon est dans le coin, on commence le ranging
-- (void)locationManager:(CLLocationManager *)manager didEnterRegion:(CLRegion *)region {
-    NSLog(@"At least one beacon entered region");
-    [self.locationManager startRangingBeaconsInRegion:self.beaconRegion];
-}
 
 
 -(void)locationManager:(CLLocationManager *)manager didRangeBeacons:(NSArray *)beacons inRegion:(CLBeaconRegion *)region {
@@ -96,12 +87,14 @@
     int step = [self.step intValue];
     if(step <=3) {
         
+        //On boucle sur les différents beacons
         for(CLBeacon *beacon in beacons) {
             NSString *beaconKey = [NSString stringWithFormat:@"%@_%@",beacon.major,beacon.minor];
+            //on a trouvé un beacon en proximité immédiate
             if (beacon.proximity == CLProximityImmediate) {
                 
                 NSLog(@"beacon found with immediate proximity");
-                //We check that the beacon is not already registered
+                //on regarde si il n'est pas déjà enregistré (pour éviter les rebonds style le même beacon est identifié 2 fois de suite- à 2 sommets différents)
                 bool beaconFound = NO;
                 for(int i=0;i<=2;i++) {
                     NSMutableDictionary *beaconSaved = [self.beaconsData objectAtIndex:i];
@@ -115,6 +108,8 @@
                         beaconFound = YES;
                     }
                 }
+                
+                //Si le beacon n'est pas trouvé, on enregistre son major et son minor dans l'array des beacons sous la forme key = major_minor
                 NSLog(@"beacon found %d",beaconFound);
                 if(!beaconFound) {
                     
@@ -131,14 +126,15 @@
         }
         
     } //end step <=3
-    else {
-        //we empty the canvas
+    
+    if(step == 4){
+        //on vide le canvas
         UIGraphicsBeginImageContext(self.view.frame.size);
         [self.drawingView.image drawInRect:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height)];
         CGContextRef ctx = UIGraphicsGetCurrentContext();
         CGContextClearRect(ctx, CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height));
         
-        //We draw the beacons
+        //On dessine les 3 beacons
         for(int i=0;i<=2;i++) {
             NSMutableDictionary *beacon = [self.beaconsData objectAtIndex:i];
             
@@ -151,46 +147,14 @@
             
             CGContextFillRect(ctx, CGRectMake(myPoint.x - 5,myPoint.y - 5,width,width));
         }
-        //We draw the circles
-        //We store the accuracy for trilateration
         
         
-        NSMutableArray *ratioList = [[NSMutableArray alloc] initWithCapacity:3];
-        ratioList[0] =[NSNumber numberWithDouble:1.0f];
-        ratioList[1] =[NSNumber numberWithDouble:1.0f];
-        ratioList[2] =[NSNumber numberWithDouble:1.0f];
-        //We calculate the ratio to have the different beacons radius crossing
-        for(CLBeacon *beacon in beacons) {
-            NSString *beaconKey = [NSString stringWithFormat:@"%@_%@",beacon.major,beacon.minor];
-            NSPredicate *predicate = [NSPredicate predicateWithFormat:@"key == %@", beaconKey];
-            NSArray *elem = [self.beaconsData filteredArrayUsingPredicate:predicate];
-            if([elem count] !=1) {
-                NSLog(@"beacon not found");
-                continue;
-            }
-            NSDictionary *beaconData = [elem objectAtIndex:0];
-            NSString *num = [beaconData valueForKey:@"num"];
-            int number = [num intValue];
-           // [ratioList setObject:[NSNumber numberWithDouble:beacon.accuracy] ];
-            ratioList[number] =[NSNumber numberWithDouble:beacon.accuracy];
-        }
-        NSLog(@"ratio list %@",ratioList);
-        float accuracy0 = [ratioList[0] floatValue];
-        float accuracy1 = [ratioList[1] floatValue];
-        float accuracy2 = [ratioList[2] floatValue];
-        
-        float distance01 = accuracy0+accuracy1;
-        float distance02 = accuracy0+accuracy2;
-        float distance12 = accuracy1+accuracy2;
-        
-        float ratio01 = 150.f/distance01;
-        float ratio02 = 150.f/distance02;
-        float ratio12 = 212.13f/distance12;
-        
-        float ratio = MAX(MAX(ratio01,ratio02),ratio12);
+        //on multiplie la mesure en mètre par 50 qui est l'unité utilisée pour le positionnement des beacons (50px = 1 mètre)
+        float ratio = 50.0f;
         
         NSMutableDictionary *radiusList = [[NSMutableDictionary alloc] init];
         
+        // on dessine les distances mesurées sous forme de cercles
         for(CLBeacon *beacon in beacons) {
             NSString *beaconKey = [NSString stringWithFormat:@"%@_%@",beacon.major,beacon.minor];
             
@@ -210,6 +174,7 @@
             
             NSLog(@"radius:%f",radius);
             
+            //ICI le dessin en lui même
             CGContextBeginPath(ctx);
             CGContextSetLineWidth(ctx, 1);
             CGContextSetStrokeColorWithColor(ctx, color.CGColor);
@@ -219,26 +184,22 @@
         } //end foreach beacon ranged
         
         
-        
+        //on stocke le radius dans les données des beacons
         for(int i=0;i<=2;i++) {
             NSMutableDictionary *beacon = [self.beaconsData objectAtIndex:i];
             [beacon setObject:[radiusList objectForKey:[beacon objectForKey:@"key"]] forKey:@"radius"];
             [self.beaconsData setObject:beacon atIndexedSubscript:i];
         }
+        //on envois tout cela à l'algorithme de trilaration qui nous retourne un point qu'il suffit de déssiner
+        CGPoint point = [self trilaterate];
+        CGContextSetRGBFillColor(ctx, 1.0, 0.5, 0.2, 1.0);
+        CGContextFillRect(ctx, CGRectMake(point.x - 10,point.y - 10,20,20));
         
-        //et on calcule les coordonnées du téléphone
-/*        NSArray *coordinates = [self trilaterate];
-        float x = [[coordinates objectAtIndex:0] floatValue];
-        float y = [[coordinates objectAtIndex:1] floatValue];
-        
-        CGContextSetFillColorWithColor(ctx, [UIColor redColor].CGColor);
-        CGContextFillRect(ctx, CGRectMake(x,y,20,20));
-*/
         //Ya plus qu'à mettre l'image dans le UIImage
         self.drawingView.image = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
         
-    } //end stpe > 3
+    } //end step = 4
 }
 
 
@@ -257,15 +218,6 @@
         if(step == 1) self.actionLabel.text = @"étape 1: collez le téléphone au beacon à la base du triangle rectangle";
         if(step == 2) self.actionLabel.text = @"étape 2: collez le téléphone au beacon au premier sommet";
         if(step == 3) self.actionLabel.text = @"étape 3: collez le téléphone au beacon au deuxième sommet";
-        
-        /*
-        CGPoint center = CGPointMake(self.view.frame.size.width / 2.0, self.view.frame.size.height / 2.0);
-        CGContextBeginPath(ctx);
-        CGContextSetLineWidth(ctx, 1);
-        CGContextAddArc(ctx, center.x, center.y, 200.0, 0, 2*M_PI, 0);
-        CGContextStrokePath(ctx);
-        */
-        
         
         for(int i=0;i<=2;i++) {
             NSMutableDictionary *beacon = [self.beaconsData objectAtIndex:i];
@@ -289,7 +241,6 @@
         self.actionLabel.text = @"OK: configuration done";
     }
     
-    
     //Ya plus qu'à mettre l'image dans le UIImage
     self.drawingView.image = UIGraphicsGetImageFromCurrentImageContext();
     
@@ -302,148 +253,64 @@
 
 
 
-- (NSArray *)trilaterate
+- (CGPoint)trilaterate
 {
-    NSString *error = @"";
-    NSArray *coordinates;
-
+    
     
         
-        
-        // PROCEED TRILATERATION
-        
-        // get coordinates for each beacon, minor is used to identify
+        // on récupère toutes les données utiles
     
         NSDictionary * beacon1 = [self.beaconsData objectAtIndex:0];
         NSNumber * radius1Num = [beacon1 objectForKey:@"radius"];
-        double radius1 = [radius1Num doubleValue];
+
         CGPoint point1 = [[beacon1 objectForKey:@"point"] CGPointValue];
         NSArray *beaconLocation1 = [NSArray arrayWithObjects:[NSNumber numberWithFloat:point1.x],[NSNumber numberWithFloat:point1.y],nil];
     
         NSDictionary * beacon2 = [self.beaconsData objectAtIndex:1];
         NSNumber * radius2Num = [beacon2 objectForKey:@"radius"];
-        double radius2 = [radius2Num doubleValue];
         CGPoint point2 = [[beacon2 objectForKey:@"point"] CGPointValue];
         NSArray *beaconLocation2 = [NSArray arrayWithObjects:[NSNumber numberWithFloat:point2.x],[NSNumber numberWithFloat:point2.y],nil];
     
         NSDictionary * beacon3 = [self.beaconsData objectAtIndex:2];
         NSNumber * radius3Num = [beacon3 objectForKey:@"radius"];
-        double radius3 = [radius3Num doubleValue];
-        CGPoint point3 = [[beacon2 objectForKey:@"point"] CGPointValue];
+        CGPoint point3 = [[beacon3 objectForKey:@"point"] CGPointValue];
         NSArray *beaconLocation3 = [NSArray arrayWithObjects:[NSNumber numberWithFloat:point3.x],[NSNumber numberWithFloat:point3.y],nil];
     NSLog(@"positions: %@  --- %@ --- %@",beaconLocation1,beaconLocation2,beaconLocation3);
-            // ex = (P2 - P1)/(numpy.linalg.norm(P2 - P1))
-            NSMutableArray *ex = [[NSMutableArray alloc] initWithCapacity:0];
-            double temp = 0;
-            for (int i = 0; i < [beaconLocation1 count]; i++) {
-                double t1 = [[beaconLocation2 objectAtIndex:i] doubleValue];
-                double t2 = [[beaconLocation1 objectAtIndex:i] doubleValue];
-                double t = t1 - t2;
-                temp += (t*t);
-            }
-            for (int i = 0; i < [beaconLocation1 count]; i++) {
-                double t1 = [[beaconLocation2 objectAtIndex:i] doubleValue];
-                double t2 = [[beaconLocation1 objectAtIndex:i] doubleValue];
-                double exx = (t1 - t2)/sqrt(temp);
-                [ex addObject:[NSNumber numberWithDouble:exx]];
-            }
-    NSLog(@"ex: %@",ex);
+    NSLog(@"radius: %@  --- %@ --- %@",radius1Num,radius2Num,radius3Num);
     
-            // i = dot(ex, P3 - P1)
-            NSMutableArray *p3p1 = [[NSMutableArray alloc] initWithCapacity:0];
-            for (int i = 0; i < [beaconLocation3 count]; i++) {
-                double t1 = [[beaconLocation3 objectAtIndex:i] doubleValue];
-                double t2 = [[beaconLocation1 objectAtIndex:i] doubleValue];
-                double t3 = t1 - t2;
-                [p3p1 addObject:[NSNumber numberWithDouble:t3]];
-            }
-    NSLog(@"p3p1: %@",p3p1);
-            double ival = 0;
-            for (int i = 0; i < [ex count]; i++) {
-                double t1 = [[ex objectAtIndex:i] doubleValue];
-                double t2 = [[p3p1 objectAtIndex:i] doubleValue];
-                ival += (t1*t2);
-            }
-    NSLog(@"ival: %f",ival);
     
-            // ey = (P3 - P1 - i*ex)/(numpy.linalg.norm(P3 - P1 - i*ex))
-            NSMutableArray *ey = [[NSMutableArray alloc] initWithCapacity:0];
-            double p3p1i = 0;
-            for (int  i = 0; i < [beaconLocation3 count]; i++) {
-                double t1 = [[beaconLocation3 objectAtIndex:i] doubleValue];
-                double t2 = [[beaconLocation1 objectAtIndex:i] doubleValue];
-                double t3 = [[ex objectAtIndex:i] doubleValue] * ival;
-                double t = t1 - t2 -t3;
-                p3p1i += (t*t);
-            }
-            for (int i = 0; i < [beaconLocation3 count]; i++) {
-                double t1 = [[beaconLocation3 objectAtIndex:i] doubleValue];
-                double t2 = [[beaconLocation1 objectAtIndex:i] doubleValue];
-                double t3 = [[ex objectAtIndex:i] doubleValue] * ival;
-                double eyy = (t1 - t2 - t3)/sqrt(p3p1i);
-                [ey addObject:[NSNumber numberWithDouble:eyy]];
-            }
-     NSLog(@"ey: %@",ey);
-            // ez = numpy.cross(ex,ey)
-            // if 2-dimensional vector then ez = 0
-            NSMutableArray *ez = [[NSMutableArray alloc] initWithCapacity:0];
-            double ezx;
-            double ezy;
-            double ezz;
-
-            ezx = 0;
-            ezy = 0;
-            ezz = 0;
-            
-            [ez addObject:[NSNumber numberWithDouble:ezx]];
-            [ez addObject:[NSNumber numberWithDouble:ezy]];
-            [ez addObject:[NSNumber numberWithDouble:ezz]];
-            
-            // d = numpy.linalg.norm(P2 - P1)
-            double d = sqrt(temp);
-     NSLog(@"d: %f",d);
-            // j = dot(ey, P3 - P1)
-            double jval = 0;
-            for (int i = 0; i < [ey count]; i++) {
-                double t1 = [[ey objectAtIndex:i] doubleValue];
-                double t2 = [[p3p1 objectAtIndex:i] doubleValue];
-                jval += (t1*t2);
-            }
-            
-            // x = (pow(DistA,2) - pow(DistB,2) + pow(d,2))/(2*d)
-            double xval = (pow(radius1,2) - pow(radius2,2) + pow(d,2))/(2*d);
-NSLog(@"xval: %f",xval);
-            // y = ((pow(DistA,2) - pow(DistC,2) + pow(i,2) + pow(j,2))/(2*j)) - ((i/j)*x)
-            double yval = ((pow(radius1,2) - pow(radius3,2) + pow(ival,2) + pow(jval,2))/(2*jval)) - ((ival/jval)*xval);
-NSLog(@"yval: %f",yval);
-            // z = sqrt(pow(DistA,2) - pow(x,2) - pow(y,2))
-            // if 2-dimensional vector then z = 0
-            double zval;
-            zval = 0;
-
-            
-            // coord = P1 + x*ex + y*ey + z*ez
-            NSMutableArray *trilateratedCoordinates = [[NSMutableArray alloc] initWithCapacity:0];
-            for (int i = 0; i < [beaconLocation1 count]; i++) {
-                double t1 = [[beaconLocation1 objectAtIndex:i] doubleValue];
-                double t2 = [[ex objectAtIndex:i] doubleValue] * xval;
-                double t3 = [[ey objectAtIndex:i] doubleValue] * yval;
-                double t4 = [[ez objectAtIndex:i] doubleValue] * zval;
-                double triptx = t1+t2+t3+t4;
-                [trilateratedCoordinates addObject:[NSNumber numberWithDouble:triptx]];
-                if (isnan(triptx))
-                {
-                    error = @"at least one of the calculated coordinates is NaN";
-                }
-            }
-            coordinates = [trilateratedCoordinates copy];
-            // if you want to store the used beacons to pass them on, uncomment line below
-            //NSArray *usedBeacons = [[NSArray alloc] initWithObjects:beacon1, beacon2, beacon3, nil];
-
+    //Voici l'algorithme en lui même
     
-    self.actionLabel.text = error;
-    NSLog(@"coordinates: %@",coordinates);
-    return coordinates;
+    float xa = [[NSNumber numberWithFloat:point1.x] floatValue];
+    float ya = [[NSNumber numberWithFloat:point1.y] floatValue];
+    float xb = [[NSNumber numberWithFloat:point2.x] floatValue];
+    float yb = [[NSNumber numberWithFloat:point2.y] floatValue];
+    float xc = [[NSNumber numberWithFloat:point3.x] floatValue];
+    float yc = [[NSNumber numberWithFloat:point3.y] floatValue];
+    float ra = [radius1Num floatValue];
+    float rb = [radius2Num floatValue];
+    float rc = [radius3Num floatValue];
+ 
+    
+    NSLog(@"%f,%f,%f,%f,%f,%f,%f,%f,%f",xa ,ya,xb,yb,xc,yc,ra,rb,rc);
+    
+    
+    float S = (pow(xc, 2.) - pow(xb, 2.) + pow(yc, 2.) - pow(yb, 2.) + pow(rb, 2.) - pow(rc, 2.)) / 2.0;
+    float T = (pow(xa, 2.) - pow(xb, 2.) + pow(ya, 2.) - pow(yb, 2.) + pow(rb, 2.) - pow(ra, 2.)) / 2.0;
+    float y = ((T * (xb - xc)) - (S * (xb - xa))) / (((ya - yb) * (xb - xc)) - ((yc - yb) * (xb - xa)));
+    
+    float num =((T * (xb - xc)) - (S * (xb - xa)));
+    float den = (((ya - yb) * (xb - xc)) - ((yc - yb) * (xb - xa)));
+    
+    NSLog(@"S: %f",S);
+    NSLog(@"T: %f",T);
+    NSLog(@"num: %f, den:%f",num,den);
+    float x = ((y * (ya - yb)) - T) / (xb - xa);
+    
+    NSLog(@"x: %f,y: %f",x,y);
+    
+    CGPoint point = CGPointMake(x, y);
+    return point;
 }
     
     
